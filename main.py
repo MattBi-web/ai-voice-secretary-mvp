@@ -6,9 +6,6 @@ import openai
 import os
 from hashlib import sha1
 
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="cache_responses"), name="static")
-
 # CONFIG
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
