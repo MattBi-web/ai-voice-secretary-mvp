@@ -1,17 +1,20 @@
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import Response
+from fastapi.staticfiles import StaticFiles
 import requests
 import openai
 import os
+from hashlib import sha1
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="cache_responses"), name="static")
 
 # CONFIG
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai.api_key = OPENAI_API_KEY
 
-CACHE_DIR = "/mnt/data/cache_responses"
+CACHE_DIR = "cache_responses"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 # Endpoint iniziale: risponde subito con transizione vocale
@@ -27,9 +30,9 @@ async def voice_entry():
 @app.post("/process-recording")
 async def handle_recording(RecordingUrl: str = Form(...), From: str = Form(...)):
     print(f"▶️ Ricevuta registrazione da {From}: {RecordingUrl}")
-    
+
     audio_url = RecordingUrl + ".mp3"
-    audio_path = f"/mnt/data/from_{From.replace('+','')}.mp3"
+    audio_path = f"from_{From.replace('+','')}.mp3"
     r = requests.get(audio_url)
     with open(audio_path, "wb") as f:
         f.write(r.content)
@@ -50,14 +53,13 @@ async def handle_recording(RecordingUrl: str = Form(...), From: str = Form(...))
     print(f"🤖 Risposta GPT: {reply_text}")
 
     # Controlla se esiste già audio per quella risposta (cache)
-    from hashlib import sha1
     hashname = sha1(reply_text.encode()).hexdigest()
     cached_audio = os.path.join(CACHE_DIR, f"{hashname}.mp3")
 
     if not os.path.exists(cached_audio):
         print("🎙 Genero audio con ElevenLabs")
         tts_response = requests.post(
-            "https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL",  # ID voce predefinita
+            "https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL",
             headers={
                 "xi-api-key": ELEVENLABS_API_KEY,
                 "Content-Type": "application/json"
@@ -77,5 +79,5 @@ async def handle_recording(RecordingUrl: str = Form(...), From: str = Form(...))
     # TwiML per far ascoltare la risposta
     return Response(content=f"""<?xml version='1.0' encoding='UTF-8'?>
 <Response>
-    <Play>{cached_audio.replace('/mnt/data','https://ai-voice-secretary-mvp.onrender.com/static')}</Play>
+    <Play>https://ai-voice-secretary-mvp.onrender.com/static/{hashname}.mp3</Play>
 </Response>""", media_type="application/xml")
