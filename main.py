@@ -17,6 +17,9 @@ openai.api_key = OPENAI_API_KEY
 CACHE_DIR = "cache_responses"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
+app = FastAPI()
+app.mount("/static", StaticFiles(directory=CACHE_DIR), name="static")
+
 # Endpoint iniziale: risponde subito con transizione vocale
 @app.post("/voice")
 async def voice_entry():
